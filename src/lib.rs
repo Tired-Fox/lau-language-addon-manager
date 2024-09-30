@@ -1,8 +1,9 @@
 mod error;
 mod manager;
+
 pub mod config;
 pub mod diagnostics;
-
+pub mod cli;
 pub mod git;
 
 use std::{borrow::Cow, str::FromStr};

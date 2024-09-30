@@ -11,7 +11,7 @@
 //! representation of [`Addon`][crate::Addon]. This information is used to know what addons are
 //! currently installed. Similar to the `"dependencies"` entry in a `npm` project's `package.json`
 
-use std::{borrow::Cow, collections::BTreeMap, path::{Path, PathBuf}};
+use std::{borrow::Cow, collections::{BTreeMap, HashSet}, path::{Path, PathBuf}, str::FromStr};
 
 use serde::{de::Visitor, Deserialize, Serialize};
 use serde_json::Value;
@@ -133,7 +133,7 @@ pub enum GroupSeverity {
     Fallback,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub enum Severity {
     Error,
     Warning,
@@ -147,6 +147,24 @@ pub enum Severity {
     InformationBang,
     #[serde(rename = "Hint!")]
     HintBang,
+}
+
+impl FromStr for Severity {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s.to_ascii_lowercase().as_str() {
+            "error" => Self::Error,
+            "warning" => Self::Warning,
+            "information" => Self::Information,
+            "hint" => Self::Hint,
+            "error!" => Self::ErrorBang,
+            "warning!" => Self::WarningBang,
+            "information!" => Self::InformationBang,
+            "hint!" => Self::HintBang,
+            other => return Err(format!("invalid diagnostic severity: {other}"))
+        })
+    }
 }
 
 #[derive(Default, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -180,9 +198,9 @@ pub enum Event {
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Diagnostics {
-        #[serde(default = "default_true", skip_serializing_if = "enabled")]
+    #[serde(default = "default_true", skip_serializing_if = "enabled")]
     pub enable: bool,
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub disable: Vec<Diagnostic>,
     //pub disable: Diagnostic
     #[serde(default = "Default::default", skip_serializing_if = "Vec::is_empty")]
@@ -260,14 +278,14 @@ impl Default for Diagnostics {
 #[derive(Default, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Doc {
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub package_name: Vec<String>,
+    #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+    pub package_name: HashSet<String>,
     
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub private_name: Vec<String>,
+    #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+    pub private_name: HashSet<String>,
 
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub protected_name: Vec<String>,
+    #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+    pub protected_name: HashSet<String>,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
     pub other: Option<Value>,

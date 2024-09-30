@@ -2,14 +2,14 @@ use std::{borrow::Cow, path::{Path, PathBuf}};
 
 use spinoff::{spinners, Spinner, Color};
 
-use crate::{config::{LuaRc, Workspace}, git::{cli::ResetType, Cli}, Addon, Error, ADDONS_DIR};
+use crate::{config::{LuaRc, Workspace}, error::UpdateSpinner, git::{cli::ResetType, Cli}, Addon, Error, ADDONS_DIR};
 
-const DOTS: spinners::Dots = spinners::Dots;
+pub const DOTS: spinners::Dots = spinners::Dots;
 
 #[derive(Debug)]
 pub struct Manager {
-    base: PathBuf,
-    config: LuaRc,
+    pub base: PathBuf,
+    pub config: LuaRc,
 }
 
 impl Manager {
@@ -52,29 +52,41 @@ impl Manager {
 
     pub fn add(&mut self, addons: Vec<Addon>) -> Result<(), Error> {
         let total = addons.len().to_string();
-        let mut spinner = Spinner::new(DOTS, format!("{:0>width$}/{total} Cloning ...", 0, width=total.len()), Color::Yellow); 
+        let mut success = 0;
+        let mut spinner = Spinner::new(DOTS, format!("{:0>width$}/{total} Cloning Addons", success, width=total.len()), Color::Yellow); 
 
         let addon_path = self.base.join(ADDONS_DIR);
-        for (i, addon) in addons.iter().enumerate() {
+        for addon in addons.iter() {
             let name = addon.name();
             let path = addon_path.join(name.as_ref());
-            spinner.update_text(format!("{:0>width$}/{total} Cloning {name}", i+1, width=total.len()));
+            spinner.update_text(format!("{:0>width$}/{total} Cloning {name}", success, width=total.len()));
 
             if !path.exists() || !self.config.get_addons().contains_key(name.as_ref()) {
                 self.config.update_addon(addon);
-                self.clone_addon(name.clone())?;
+                if let Err(err) = self.clone_addon(name.clone()) {
+                    err.update_spinner(
+                        &mut spinner,
+                        format!("failed to clone addon: {name}")
+                    );
+                    continue;
+                }
             } else {
                 let branch_diff = addon.branch.as_ref().map(|v| Cli::branch_name(&path).map(|n| &n != v).unwrap_or_default()).unwrap_or_default();
                 let checksum_diff = addon.checksum.as_ref().map(|v| Cli::checksum(&path, None).map(|n| &n != v).unwrap_or_default()).unwrap_or_default();
                 self.config.update_addon(addon);
 
                 if branch_diff || checksum_diff {
-                    self.clone_addon(name.clone())?;
+                    if let Err(err) = self.clone_addon(name.clone()) {
+                        err.update_spinner(
+                            &mut spinner,
+                            format!("failed to clone addon: {name}")
+                        );
+                        continue;
+                    }
                 }
             };
+            success += 1;
         }
-
-        self.config.write()?;
 
         spinner.update_text("Updating .luarc.json");
 
@@ -83,7 +95,6 @@ impl Manager {
             Some(workspace) => {
                 if !workspace.user_third_party.contains(&path) {
                     workspace.user_third_party.push(path);
-                    self.config.write()?;
                 }
             },
             None => {
@@ -91,11 +102,17 @@ impl Manager {
                     user_third_party: Vec::from([path]),
                     ..Default::default()
                 });
-                self.config.write()?;
             }
         }
 
-        spinner.stop_and_persist("\x1b[32m✓\x1b[39m", format!("[Add] {total}/{total} Finished!").as_str());
+        if let Err(err) = self.config.write() {
+            err.update_spinner(
+                &mut spinner,
+                "failed to write updates to .luarc.json",
+            )
+        }
+
+        spinner.stop_and_persist("\x1b[32m✓\x1b[39m", format!("[Add] {success}/{total} Finished!").as_str());
         
         Ok(())
     }
@@ -123,7 +140,12 @@ impl Manager {
             }
         }
 
-        self.config.write()?;
+        if let Err(err) = self.config.write() {
+            err.update_spinner(
+                &mut spinner,
+                "failed to write updates to .luarc.json",
+            )
+        }
 
         spinner.stop_and_persist("\x1b[32m✓\x1b[39m", format!("[Remove] {total}/{total} Finished!").as_str());
         
@@ -162,48 +184,84 @@ impl Manager {
             match addon.branch.as_ref() {
                 Some(b) if b != &branch => {
                     spinner.update_text(format!("[{name}] Fetching latest repository changes"));
-                    Cli::fetch(&path)?;
+                    Cli::fetch(&path).ok_with_spinner(
+                        &mut spinner,
+                        format!("[{name}] failed to fetch latest changes from git"),
+                    );
                     
                     spinner.update_text(format!("[{name}] Switching to branch `{b}`"));
-                    Cli::switch(&path, b)?;
+                    Cli::switch(&path, b).ok_with_spinner(
+                        &mut spinner,
+                        format!("[{name}] failed to switch git branches"),
+                    );
                     
                     spinner.update_text(format!("[{name}] Pulling latest changes"));
-                    Cli::pull(&path, false)?;
+                    Cli::pull(&path, false).ok_with_spinner(
+                        &mut spinner,
+                        format!("[{name}] failed to pull latest changes")
+                    );
                     
                     if let Some(checksum) = addon.checksum.as_deref() {
                         spinner.update_text(format!("[{name}] Setting branch to checksum `{checksum}`"));
-                        Cli::reset(&path, ResetType::Hard, Some(checksum))?;
+                        Cli::reset(&path, ResetType::Hard, Some(checksum)).ok_with_spinner(
+                            &mut spinner,
+                            format!("[{name}] failed to set git branch")
+                        );
                     }
                 },
                 None if branch != default_branch => {
                     spinner.update_text(format!("[{name}] Fetching latest repository changes"));
-                    Cli::fetch(&path)?;
+                    Cli::fetch(&path).ok_with_spinner(
+                        &mut spinner,
+                        format!("[{name}] failed to fetch latest changes from git"),
+                    );
                     
                     spinner.update_text(format!("[{name}] Switching to branch `{default_branch}`"));
-                    Cli::switch(&path, &default_branch)?;
+                    Cli::switch(&path, &default_branch).ok_with_spinner(
+                        &mut spinner,
+                        format!("[{name}] failed to switch git branches"),
+                    );
                     
                     spinner.update_text(format!("[{name}] Pulling latest changes"));
-                    Cli::pull(&path, false)?;
+                    Cli::pull(&path, false).ok_with_spinner(
+                        &mut spinner,
+                        format!("[{name}] failed to pull latest changes")
+                    );
                     
                     if let Some(checksum) = addon.checksum.as_deref() {
                         spinner.update_text(format!("[{name}] Setting branch to checksum `{checksum}`"));
-                        Cli::reset(&path, ResetType::Hard, Some(checksum))?;
+                        Cli::reset(&path, ResetType::Hard, Some(checksum)).ok_with_spinner(
+                            &mut spinner,
+                            format!("[{name}] failed to set git branch")
+                        );
                     }
                 },
                 _ => match addon.checksum.as_ref() {
                     Some(c) if c != &checksum => {
                         spinner.update_text(format!("[{name}] Fetching latest repository changes"));
-                        Cli::fetch(&path)?;
+                        Cli::fetch(&path).ok_with_spinner(
+                            &mut spinner,
+                            format!("[{name}] failed to fetch latest changes from git"),
+                        );
                         spinner.update_text(format!("[{name}] Setting branch to checksum `{c}`"));
-                        Cli::reset(&path, ResetType::Hard, Some(c))?;
+                        Cli::reset(&path, ResetType::Hard, Some(c)).ok_with_spinner(
+                            &mut spinner,
+                            format!("[{name}] failed to set git branch")
+                        );
                     },
                     None => {
                         let latest = Cli::checksum(&path, Some(default_branch.as_str()))?;
                         if latest != checksum {
                             spinner.update_text(format!("[{name}] Fetching latest repository changes"));
-                            Cli::fetch(&path)?;
+                            Cli::fetch(&path).ok_with_spinner(
+                                &mut spinner,
+                                format!("[{name}] failed to fetch latest changes from git"),
+                            );
                             spinner.update_text(format!("[{name}] Setting branch to checksum `{latest}`"));
-                            Cli::reset(&path, ResetType::Hard, Some(latest))?;
+                            Cli::reset(&path, ResetType::Hard, Some(latest)).ok_with_spinner(
+                                &mut spinner,
+                                format!("[{name}] failed to set git branch")
+                            );
                         }
                     },
                     _ => {}
@@ -211,7 +269,12 @@ impl Manager {
             }
         }
 
-        self.config.write()?;
+        if let Err(err) = self.config.write() {
+            err.update_spinner(
+                &mut spinner,
+                "failed to write updates to .luarc.json",
+            )
+        }
 
         spinner.stop_and_persist("\x1b[32m✓\x1b[39m", "[Update] Finished!");
         
@@ -226,7 +289,12 @@ impl Manager {
             for addon in (std::fs::read_dir(self.base.join(ADDONS_DIR))?).flatten() {
                 if addon.path().is_dir() && addon.path().file_stem().map(|v| !self.config.get_addons().contains_key(&v.to_string_lossy())).unwrap_or_default() {
                     spinner.update_text(format!("Removing unknown addon `{}`", addon.path().file_stem().unwrap().to_string_lossy()));
-                    std::fs::remove_dir_all(addon.path())?;
+                    std::fs::remove_dir_all(addon.path())
+                        .map_err(Error::from)
+                        .ok_with_spinner(
+                            &mut spinner,
+                            format!("failed to remove directory: {}", addon.path().display())
+                        );
                 }
             }
         }
