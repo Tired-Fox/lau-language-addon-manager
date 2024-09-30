@@ -112,7 +112,7 @@ impl Manager {
             )
         }
 
-        spinner.stop_and_persist("\x1b[32m✓\x1b[39m", format!("[Add] {success}/{total} Finished!").as_str());
+        spinner.success(format!("[Add] {success}/{total} Finished!").as_str());
         
         Ok(())
     }
@@ -147,7 +147,7 @@ impl Manager {
             )
         }
 
-        spinner.stop_and_persist("\x1b[32m✓\x1b[39m", format!("[Remove] {total}/{total} Finished!").as_str());
+        spinner.success(format!("[Remove] {total}/{total} Finished!").as_str());
         
         Ok(())
     }
@@ -276,7 +276,7 @@ impl Manager {
             )
         }
 
-        spinner.stop_and_persist("\x1b[32m✓\x1b[39m", "[Update] Finished!");
+        spinner.success("[Update] Finished!");
         
         Ok(())
     }
@@ -299,7 +299,7 @@ impl Manager {
             }
         }
         
-        spinner.stop_and_persist("\x1b[32m✓\x1b[39m", "[Clean] Finished!");
+        spinner.success("[Clean] Finished!");
 
         Ok(())
     }
