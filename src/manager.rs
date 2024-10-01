@@ -2,7 +2,7 @@ use std::{borrow::Cow, path::{Path, PathBuf}};
 
 use spinoff::{spinners, Spinner, Color};
 
-use crate::{config::{LuaRc, Workspace}, error::UpdateSpinner, git::{cli::ResetType, Cli}, Addon, Error, ADDONS_DIR};
+use crate::{config::{LuaRc, Workspace}, error::UpdateSpinner, git::{ResetType, Cli}, Addon, Error, ADDONS_DIR};
 
 pub const DOTS: spinners::Dots = spinners::Dots;
 
