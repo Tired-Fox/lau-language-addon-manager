@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use spinoff::{Spinner, Color};
+use spinoff::{Color, Spinner};
 
 use crate::manager::DOTS;
 

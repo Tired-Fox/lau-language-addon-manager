@@ -11,12 +11,20 @@
 //! representation of [`Addon`][crate::Addon]. This information is used to know what addons are
 //! currently installed. Similar to the `"dependencies"` entry in a `npm` project's `package.json`
 
-use std::{borrow::Cow, collections::{BTreeMap, HashSet}, path::{Path, PathBuf}, str::FromStr};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, HashSet},
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use serde::{de::Visitor, Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{diagnostics::{Diagnostic, DiagnosticGroup}, Addon, Error, ADDONS_DIR};
+use crate::{
+    diagnostics::{Diagnostic, DiagnosticGroup},
+    Addon, Error, ADDONS_DIR,
+};
 
 const fn enabled(ctx: &bool) -> bool {
     *ctx
@@ -35,7 +43,6 @@ const fn default_true() -> bool {
     true
 }
 
-
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct AddonManager {
     #[serde(default = "default_true", skip_serializing_if = "enabled")]
@@ -47,7 +54,10 @@ pub struct AddonManager {
 
 impl Default for AddonManager {
     fn default() -> Self {
-        Self { enable: true, other: None }
+        Self {
+            enable: true,
+            other: None,
+        }
     }
 }
 
@@ -162,7 +172,7 @@ impl FromStr for Severity {
             "warning!" => Self::WarningBang,
             "information!" => Self::InformationBang,
             "hint!" => Self::HintBang,
-            other => return Err(format!("invalid diagnostic severity: {other}"))
+            other => return Err(format!("invalid diagnostic severity: {other}")),
         })
     }
 }
@@ -192,7 +202,7 @@ pub enum FileStatus {
 pub enum Event {
     OnChange,
     OnSave,
-    None
+    None,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -221,11 +231,17 @@ pub struct Diagnostics {
     pub severity: BTreeMap<Diagnostic, Severity>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub unused_local_exclude: Vec<String>,
-    #[serde(default = "Diagnostics::workspace_delay", skip_serializing_if = "Self::three_minute_validate")]
+    #[serde(
+        default = "Diagnostics::workspace_delay",
+        skip_serializing_if = "Self::three_minute_validate"
+    )]
     pub workspace_delay: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub workspace_event: Option<Event>,
-    #[serde(default = "Diagnostics::workspace_rate", skip_serializing_if = "Self::full_percent_validate")]
+    #[serde(
+        default = "Diagnostics::workspace_rate",
+        skip_serializing_if = "Self::full_percent_validate"
+    )]
     pub workspace_rate: usize,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
@@ -280,7 +296,7 @@ impl Default for Diagnostics {
 pub struct Doc {
     #[serde(default, skip_serializing_if = "HashSet::is_empty")]
     pub package_name: HashSet<String>,
-    
+
     #[serde(default, skip_serializing_if = "HashSet::is_empty")]
     pub private_name: HashSet<String>,
 
@@ -442,7 +458,7 @@ pub struct Misc {
 pub enum Status {
     Default,
     Enable,
-    Disable
+    Disable,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -523,7 +539,10 @@ pub struct SignatureHelp {
 }
 impl Default for SignatureHelp {
     fn default() -> Self {
-        Self { enable: true, other: None, }
+        Self {
+            enable: true,
+            other: None,
+        }
     }
 }
 
@@ -573,7 +592,6 @@ impl Default for Window {
     }
 }
 
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum CheckThirdParty {
     Ask,
@@ -585,9 +603,9 @@ pub enum CheckThirdParty {
 
 impl Serialize for CheckThirdParty {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer {
-
+    where
+        S: serde::Serializer,
+    {
         match self {
             Self::Ask => serializer.serialize_str("Ask"),
             Self::Apply => serializer.serialize_str("Apply"),
@@ -600,9 +618,9 @@ impl Serialize for CheckThirdParty {
 
 impl<'de> Deserialize<'de> for CheckThirdParty {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: serde::Deserializer<'de> {
-        
+    where
+        D: serde::Deserializer<'de>,
+    {
         struct CheckThirdPartyVisitor;
         impl<'de> Visitor<'de> for CheckThirdPartyVisitor {
             type Value = CheckThirdParty;
@@ -612,31 +630,35 @@ impl<'de> Deserialize<'de> for CheckThirdParty {
             }
 
             fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-                where
-                    E: serde::de::Error, {
-
+            where
+                E: serde::de::Error,
+            {
                 self.visit_str(v.as_str())
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-                where
-                    E: serde::de::Error, {
-
+            where
+                E: serde::de::Error,
+            {
                 match v {
                     "Ask" => Ok(CheckThirdParty::Ask),
                     "Apply" => Ok(CheckThirdParty::Apply),
                     "ApplyInMemory" => Ok(CheckThirdParty::ApplyInMemory),
                     "Disable" => Ok(CheckThirdParty::Disable),
-                    other => Err(serde::de::Error::custom(format!("unknown checkThirdParty value: {other}")))
+                    other => Err(serde::de::Error::custom(format!(
+                        "unknown checkThirdParty value: {other}"
+                    ))),
                 }
             }
 
             fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
-                where
-                    E: serde::de::Error, {
-
+            where
+                E: serde::de::Error,
+            {
                 if v {
-                    return Err(serde::de::Error::custom("checkThirdParty cannot be set to `true`"));
+                    return Err(serde::de::Error::custom(
+                        "checkThirdParty cannot be set to `true`",
+                    ));
                 }
                 Ok(CheckThirdParty::False)
             }
@@ -657,9 +679,15 @@ pub struct Workspace {
     pub ignore_submodules: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub library: Vec<String>,
-    #[serde(default = "Workspace::max_preload", skip_serializing_if = "Self::max_preload_validate")]
+    #[serde(
+        default = "Workspace::max_preload",
+        skip_serializing_if = "Self::max_preload_validate"
+    )]
     pub max_preload: usize,
-    #[serde(default = "Workspace::preload_file_size", skip_serializing_if = "Self::preload_file_size_validate")]
+    #[serde(
+        default = "Workspace::preload_file_size",
+        skip_serializing_if = "Self::preload_file_size_validate"
+    )]
     pub preload_file_size: usize,
     #[serde(default = "default_true", skip_serializing_if = "enabled")]
     pub use_git_ignore: bool,
@@ -771,7 +799,7 @@ impl LuaRc {
 
     pub fn get_addons_mut(&mut self) -> &mut BTreeMap<Cow<'static, str>, Addon> {
         if self.workspace.is_none() {
-            self.workspace = Some(Workspace { 
+            self.workspace = Some(Workspace {
                 addons: BTreeMap::default(),
                 ..Default::default()
             });
@@ -782,7 +810,7 @@ impl LuaRc {
 
     pub fn get_addons(&mut self) -> &BTreeMap<Cow<'static, str>, Addon> {
         if self.workspace.is_none() {
-            self.workspace = Some(Workspace { 
+            self.workspace = Some(Workspace {
                 addons: BTreeMap::default(),
                 ..Default::default()
             });
@@ -793,7 +821,9 @@ impl LuaRc {
 
     pub fn update_addon(&mut self, addon: &Addon) {
         let name = addon.name();
-        if let std::collections::btree_map::Entry::Vacant(e) = self.get_addons_mut().entry(name.clone()) {
+        if let std::collections::btree_map::Entry::Vacant(e) =
+            self.get_addons_mut().entry(name.clone())
+        {
             e.insert(addon.clone());
         } else {
             self.get_addons_mut().get_mut(&name).unwrap().merge(addon);
@@ -801,7 +831,10 @@ impl LuaRc {
     }
 
     pub fn write(&self) -> Result<(), Error> {
-        Ok(std::fs::write(&self.path, serde_json::to_string_pretty(self)?)?)
+        Ok(std::fs::write(
+            &self.path,
+            serde_json::to_string_pretty(self)?,
+        )?)
     }
 
     fn read(file: &Path) -> Result<Self, Error> {
@@ -820,26 +853,29 @@ impl LuaRc {
         let _addons = dir.join(ADDONS_DIR);
         if _addons.exists() {
             for entry in (std::fs::read_dir(_addons)?).flatten() {
-                if entry.path().join(".git").exists()
-                    && entry.path().join("config.json").exists()
-                {
+                if entry.path().join(".git").exists() && entry.path().join("config.json").exists() {
                     let output = std::process::Command::new("git")
-                        .args([ "rev-parse", "--verify", "HEAD" ])
+                        .args(["rev-parse", "--verify", "HEAD"])
                         .output()?;
 
                     if output.status.success() {
                         let sha = String::from_utf8_lossy(&output.stdout).trim().to_string();
                         if !sha.is_empty() {
-                            let name = entry.path().file_stem().unwrap().to_string_lossy().to_string();
-                            addons.insert(
-                                name.clone().into(),
-                                Addon::cats(name, Some(sha), None)
-                            );
+                            let name = entry
+                                .path()
+                                .file_stem()
+                                .unwrap()
+                                .to_string_lossy()
+                                .to_string();
+                            addons.insert(name.clone().into(), Addon::cats(name, Some(sha), None));
                             continue;
                         }
                     }
 
-                    log::error!("checksum couldn't be retrieve for path: {}", entry.path().display());
+                    log::error!(
+                        "checksum couldn't be retrieve for path: {}",
+                        entry.path().display()
+                    );
                     if !output.stderr.is_empty() {
                         log::error!("{}", String::from_utf8_lossy(&output.stderr));
                     }

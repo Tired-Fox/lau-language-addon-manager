@@ -61,9 +61,9 @@ async fn main() -> Result<(), Error> {
                     }
                     manager.config.write()?;
                 }
-            }
+            },
             Config::Diagnostic { setting } => match setting {
-                DiagnosticSetting::Disable { diagnostics }  => {
+                DiagnosticSetting::Disable { diagnostics } => {
                     match manager.config.diagnostics.as_mut() {
                         Some(d) => d.disable.extend(diagnostics),
                         None => {
@@ -74,10 +74,16 @@ async fn main() -> Result<(), Error> {
                         }
                     }
                     manager.config.write()?;
-                },
-                DiagnosticSetting::Enable { diagnostics }  => if let Some(d) = manager.config.diagnostics.as_mut() {
-                    d.disable = d.disable.drain(..).filter(|item| !diagnostics.contains(item)).collect();
-                    manager.config.write()?;
+                }
+                DiagnosticSetting::Enable { diagnostics } => {
+                    if let Some(d) = manager.config.diagnostics.as_mut() {
+                        d.disable = d
+                            .disable
+                            .drain(..)
+                            .filter(|item| !diagnostics.contains(item))
+                            .collect();
+                        manager.config.write()?;
+                    }
                 }
                 DiagnosticSetting::AddGlobal { globals } => {
                     match manager.config.diagnostics.as_mut() {
@@ -90,14 +96,22 @@ async fn main() -> Result<(), Error> {
                         }
                     }
                     manager.config.write()?;
-                },
-                DiagnosticSetting::RemoveGlobal { globals } => if let Some(d) = manager.config.diagnostics.as_mut() {
-                    d.globals = d.globals.drain(..).filter(|item| !globals.contains(item)).collect();
-                    manager.config.write()?;
+                }
+                DiagnosticSetting::RemoveGlobal { globals } => {
+                    if let Some(d) = manager.config.diagnostics.as_mut() {
+                        d.globals = d
+                            .globals
+                            .drain(..)
+                            .filter(|item| !globals.contains(item))
+                            .collect();
+                        manager.config.write()?;
+                    }
                 }
                 DiagnosticSetting::Severity { severity } => {
                     match manager.config.diagnostics.as_mut() {
-                        Some(d) => d.severity.extend(severity.into_iter().map(|s| (s.key, s.value))),
+                        Some(d) => d
+                            .severity
+                            .extend(severity.into_iter().map(|s| (s.key, s.value))),
                         None => {
                             manager.config.diagnostics = Some(llam::config::Diagnostics {
                                 severity: severity.into_iter().map(|s| (s.key, s.value)).collect(),
@@ -107,8 +121,8 @@ async fn main() -> Result<(), Error> {
                     }
                     manager.config.write()?;
                 }
-            } 
-        }
+            },
+        },
     }
 
     Ok(())

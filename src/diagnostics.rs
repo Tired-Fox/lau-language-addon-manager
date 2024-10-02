@@ -1,8 +1,8 @@
-use std::str::FromStr;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(rename_all="kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum Ambiguity {
     Ambiguity1,
     CountDownLoop,
@@ -12,14 +12,14 @@ pub enum Ambiguity {
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(rename_all="kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum Await {
     AwaitInSync,
     NotYieldable,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(rename_all="kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum Codestyle {
     CodestyleCheck,
     NameStyleCheck,
@@ -27,20 +27,20 @@ pub enum Codestyle {
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(rename_all="kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum Conventions {
     GlobalElement,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(rename_all="kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum Duplicate {
     DuplicateIndex,
     DuplicateSetField,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(rename_all="kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum Global {
     GlobalInNilEnv,
     LowercaseGlobal,
@@ -49,7 +49,7 @@ pub enum Global {
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(rename_all="kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum Luadoc {
     CastTypeMismatch,
     CircleDocClass,
@@ -69,13 +69,13 @@ pub enum Luadoc {
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(rename_all="kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum Redefined {
     RedefinedLocal,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(rename_all="kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum Strict {
     CloseNonObject,
     Deprecated,
@@ -83,13 +83,13 @@ pub enum Strict {
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(rename_all="kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum Strong {
     NoUnknown,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(rename_all="kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum TypeCheck {
     AssignTypeMismatch,
     CastLocalType,
@@ -102,7 +102,7 @@ pub enum TypeCheck {
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(rename_all="kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum Unbalanced {
     MissingFields,
     MissingParameter,
@@ -115,7 +115,7 @@ pub enum Unbalanced {
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(rename_all="kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum Unused {
     CodeAfterBreak,
     EmptyBlock,
@@ -205,11 +205,19 @@ impl FromStr for Diagnostic {
             ("unbalanced", "missing-fields") => Self::Unbalanced(Unbalanced::MissingFields),
             ("unbalanced", "missing-parameter") => Self::Unbalanced(Unbalanced::MissingParameter),
             ("unbalanced", "missing-return") => Self::Unbalanced(Unbalanced::MissingReturn),
-            ("unbalanced", "missing-return-value") => Self::Unbalanced(Unbalanced::MissingReturnValue),
-            ("unbalanced", "redundant-parameter") => Self::Unbalanced(Unbalanced::RedundantParameter),
-            ("unbalanced", "redundant-return-value") => Self::Unbalanced(Unbalanced::RedundantReturnValue),
+            ("unbalanced", "missing-return-value") => {
+                Self::Unbalanced(Unbalanced::MissingReturnValue)
+            }
+            ("unbalanced", "redundant-parameter") => {
+                Self::Unbalanced(Unbalanced::RedundantParameter)
+            }
+            ("unbalanced", "redundant-return-value") => {
+                Self::Unbalanced(Unbalanced::RedundantReturnValue)
+            }
             ("unbalanced", "redundant-value") => Self::Unbalanced(Unbalanced::RedundantValue),
-            ("unbalanced", "unbalanced-assignments") => Self::Unbalanced(Unbalanced::UnbalancedAssignments),
+            ("unbalanced", "unbalanced-assignments") => {
+                Self::Unbalanced(Unbalanced::UnbalancedAssignments)
+            }
             ("unused", "code-after-break") => Self::Unused(Unused::CodeAfterBreak),
             ("unused", "empty-block") => Self::Unused(Unused::EmptyBlock),
             ("unused", "redundant-return") => Self::Unused(Unused::RedundantReturn),
@@ -219,7 +227,7 @@ impl FromStr for Diagnostic {
             ("unused", "unused-label") => Self::Unused(Unused::UnusedLabel),
             ("unused", "unused-local") => Self::Unused(Unused::UnusedLocal),
             ("unused", "unused-vararg") => Self::Unused(Unused::UnusedVararg),
-            (group, name) => return Err(format!("invalid lua diagnostic: {group}:{name}"))
+            (group, name) => return Err(format!("invalid lua diagnostic: {group}:{name}")),
         })
     }
 }

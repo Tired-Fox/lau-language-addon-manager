@@ -1,9 +1,9 @@
 mod error;
 mod manager;
 
+pub mod cli;
 pub mod config;
 pub mod diagnostics;
-pub mod cli;
 pub mod git;
 
 use std::{borrow::Cow, str::FromStr};
@@ -85,8 +85,8 @@ impl Addon {
     pub fn clone_url(&self) -> String {
         match self.target {
             Target::LuaCats => format!("https://github.com/LuaCATS/{}.git", self.src),
-            Target::Github => self.src.to_string()
-        } 
+            Target::Github => self.src.to_string(),
+        }
     }
 
     pub fn merge(&mut self, other: &Self) -> bool {
