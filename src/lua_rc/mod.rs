@@ -21,10 +21,10 @@ use std::{
 use serde::{de::Visitor, Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{
-    diagnostics::{Diagnostic, DiagnosticGroup},
-    Addon, Error, ADDONS_DIR,
-};
+pub mod diagnostics;
+use diagnostics::{Diagnostic, DiagnosticGroup};
+use crate::{Addon, Error, ADDONS_DIR};
+
 
 const fn enabled(ctx: &bool) -> bool {
     *ctx
@@ -49,7 +49,7 @@ pub struct AddonManager {
     pub enable: bool,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Value>,
+    pub other: Option<BTreeMap<String, Value>>,
 }
 
 impl Default for AddonManager {
@@ -102,7 +102,7 @@ pub struct Completion {
     pub workspace_word: bool,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Value>,
+    pub other: Option<BTreeMap<String, Value>>,
 }
 
 impl Default for Completion {
@@ -245,7 +245,7 @@ pub struct Diagnostics {
     pub workspace_rate: usize,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Value>,
+    pub other: Option<BTreeMap<String, Value>>,
 }
 
 impl Diagnostics {
@@ -304,7 +304,7 @@ pub struct Doc {
     pub protected_name: HashSet<String>,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Value>,
+    pub other: Option<BTreeMap<String, Value>>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -317,7 +317,7 @@ pub struct Format {
     pub default_config: BTreeMap<Cow<'static, str>, Cow<'static, str>>,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Value>,
+    pub other: Option<BTreeMap<String, Value>>,
 }
 
 impl Default for Format {
@@ -371,7 +371,7 @@ pub struct Hint {
     pub set_type: bool,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Value>,
+    pub other: Option<BTreeMap<String, Value>>,
 }
 
 impl Default for Hint {
@@ -409,7 +409,7 @@ pub struct Hover {
     pub view_string_max: usize,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Value>,
+    pub other: Option<BTreeMap<String, Value>>,
 }
 
 impl Default for Hover {
@@ -451,7 +451,7 @@ pub struct Misc {
     pub executable_path: Option<String>,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Value>,
+    pub other: Option<BTreeMap<String, Value>>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -497,7 +497,7 @@ pub struct Runtime {
     pub version: Option<String>,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Value>,
+    pub other: Option<BTreeMap<String, Value>>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -513,7 +513,7 @@ pub struct Semantic {
     pub variable: bool,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Value>,
+    pub other: Option<BTreeMap<String, Value>>,
 }
 impl Default for Semantic {
     fn default() -> Self {
@@ -535,7 +535,7 @@ pub struct SignatureHelp {
     pub enable: bool,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Value>,
+    pub other: Option<BTreeMap<String, Value>>,
 }
 impl Default for SignatureHelp {
     fn default() -> Self {
@@ -553,7 +553,7 @@ pub struct Spell {
     pub dict: Vec<String>,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Value>,
+    pub other: Option<BTreeMap<String, Value>>,
 }
 
 #[derive(Default, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -567,7 +567,7 @@ pub struct Type {
     pub weak_union_check: bool,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Value>,
+    pub other: Option<BTreeMap<String, Value>>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -579,7 +579,7 @@ pub struct Window {
     pub status_bar: bool,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Value>,
+    pub other: Option<BTreeMap<String, Value>>,
 }
 
 impl Default for Window {
@@ -694,7 +694,7 @@ pub struct Workspace {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub user_third_party: Vec<String>,
 
-    /// This is added and custom to `llam`.
+    /// This is added and custom to `lua-language-addon-manager (llam)`.
     ///
     /// resusing the `.luarc.json` file will reduce the number of files needed
     /// when developing a project.
@@ -702,7 +702,7 @@ pub struct Workspace {
     pub addons: BTreeMap<Cow<'static, str>, Addon>,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Value>,
+    pub other: Option<BTreeMap<String, Value>>,
 }
 
 impl Workspace {
@@ -781,7 +781,7 @@ pub struct LuaRc {
     pub workspace: Option<Workspace>,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub other: Option<Value>,
+    pub other: Option<BTreeMap<String, Value>>,
 }
 
 impl LuaRc {
@@ -836,7 +836,9 @@ impl LuaRc {
             serde_json::to_string_pretty(self)?,
         )?)
     }
+}
 
+impl LuaRc {
     fn read(file: &Path) -> Result<Self, Error> {
         let bytes = std::fs::read(file)?;
         let mut lock: Self = serde_json::from_slice(&bytes)?;

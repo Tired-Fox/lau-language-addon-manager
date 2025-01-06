@@ -1,6 +1,6 @@
 use std::{path::PathBuf, str::FromStr};
 
-use crate::{config::Severity, diagnostics::Diagnostic, Addon};
+use crate::{lua_rc::{diagnostics::Diagnostic, Severity}, manager::SomeOrAll, Addon};
 
 /// Lua Language Addon Manager
 ///
@@ -39,6 +39,16 @@ pub struct ListOrAll {
     pub addons: Vec<Addon>,
     #[arg(long)]
     pub all: bool,
+}
+
+impl From<ListOrAll> for SomeOrAll<Addon> {
+    fn from(value: ListOrAll) -> Self {
+       if value.all {
+           SomeOrAll::All
+       } else {
+           SomeOrAll::Some(value.addons)
+       }
+    }
 }
 
 #[derive(Debug, clap::Subcommand)]
@@ -98,7 +108,7 @@ where
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if !s.contains("=") {
-            return Err("invalid set value, expected <key>=<value>".to_string());
+            return Err("invalid set value, expected [key]=[value]".to_string());
         }
 
         let (key, value) = s.split_once('=').unwrap();

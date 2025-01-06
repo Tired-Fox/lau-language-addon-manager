@@ -1,9 +1,12 @@
 mod error;
 mod manager;
 
+pub mod lua_rc;
+
+// TODO: Don't expose this
 pub mod cli;
-pub mod config;
-pub mod diagnostics;
+
+pub mod logging;
 pub mod git;
 
 use std::{borrow::Cow, str::FromStr};
@@ -106,6 +109,12 @@ impl Addon {
         }
 
         diff
+    }
+}
+
+impl From<String> for Addon {
+    fn from(value: String) -> Self {
+        value.as_str().into()
     }
 }
 
