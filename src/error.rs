@@ -8,6 +8,8 @@ pub enum Error {
     Io(std::io::Error),
 }
 
+impl std::error::Error for Error {}
+
 impl Error {
     pub fn context(ctx: impl Display, error: impl Into<Error>) -> Self {
         Self::Context(ctx.to_string(), Box::new(error.into()))

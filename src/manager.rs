@@ -29,7 +29,7 @@ impl<S> From<Vec<S>> for SomeOrAll<S> {
 #[derive(Debug)]
 pub struct Manager<L: Logger = Spinner> {
     pub base: PathBuf,
-    pub config: LuaRc,
+    pub rc: LuaRc,
 
     pub logger: L
 }
@@ -38,7 +38,7 @@ impl<L: Logger> Manager<L> {
     pub fn new(dir: impl AsRef<Path>, logger: L) -> Result<Self, Error> {
         let path = dir.as_ref();
         Ok(Self {
-            config: LuaRc::detect(path)?,
+            rc: LuaRc::detect(path)?,
             base: path.to_path_buf(),
 
             logger,
@@ -47,7 +47,7 @@ impl<L: Logger> Manager<L> {
 
     pub fn clone_addon(&mut self, name: Cow<'static, str>) -> Result<(), Error> {
         // PERF: Return error or log when addon is not in lock file
-        if let Some(addon) = self.config.get_addons().get(&name) {
+        if let Some(addon) = self.rc.get_addons().get(&name) {
             let temp_name = addon
                 .checksum
                 .clone()
@@ -92,8 +92,8 @@ impl<L: Logger> Manager<L> {
                 width = total.len()
             ));
 
-            if !path.exists() || !self.config.get_addons().contains_key(name.as_ref()) {
-                self.config.update_addon(addon);
+            if !path.exists() || !self.rc.get_addons().contains_key(name.as_ref()) {
+                self.rc.add_or_update_addon(addon);
                 if self.clone_addon(name.clone()).is_err() {
                     self.logger.error(format!("failed to clone addon: {name}"));
                     continue;
@@ -116,7 +116,7 @@ impl<L: Logger> Manager<L> {
                     })
                     .unwrap_or_default();
 
-                self.config.update_addon(addon);
+                self.rc.add_or_update_addon(addon);
                 if branch_diff || checksum_diff {
                     self.logger.warning(format!("{name} update available"));
                 }
@@ -128,21 +128,21 @@ impl<L: Logger> Manager<L> {
         self.logger.update("Updating .luarc.json");
 
         let path = ADDONS_DIR.to_string();
-        match self.config.workspace.as_mut() {
+        match self.rc.workspace.as_mut() {
             Some(workspace) => {
                 if !workspace.user_third_party.contains(&path) {
                     workspace.user_third_party.push(path);
                 }
             }
             None => {
-                self.config.workspace = Some(Workspace {
+                self.rc.workspace = Some(Workspace {
                     user_third_party: Vec::from([path]),
                     ..Default::default()
                 });
             }
         }
 
-        if self.config.write().is_err() {
+        if self.rc.write().is_err() {
             self.logger.error("failed to write updates to .luarc.json");
         }
 
@@ -153,7 +153,7 @@ impl<L: Logger> Manager<L> {
     pub fn remove(&mut self, addons: impl Into<SomeOrAll<Addon>>) -> Result<(), Error> {
         let addons = match addons.into() {
             SomeOrAll::Some(addons) => addons,
-            SomeOrAll::All => self.config.get_addons().values().cloned().collect()
+            SomeOrAll::All => self.rc.get_addons().values().cloned().collect()
         };
 
         let total = addons.len().to_string();
@@ -169,8 +169,8 @@ impl<L: Logger> Manager<L> {
                 width = total.len()
             ));
 
-            if self.config.get_addons().contains_key(name.as_ref()) {
-                self.config.get_addons_mut().remove(name.as_ref());
+            if self.rc.get_addons().contains_key(name.as_ref()) {
+                self.rc.get_addons_mut().remove(name.as_ref());
             }
 
             if path.exists() {
@@ -178,7 +178,7 @@ impl<L: Logger> Manager<L> {
             }
         }
 
-        if self.config.write().is_err() {
+        if self.rc.write().is_err() {
             self.logger.error("failed to write updates to .luarc.json");
         }
 
@@ -190,7 +190,7 @@ impl<L: Logger> Manager<L> {
         // Collect all that are in the config
         let addons = match addons.into() {
             SomeOrAll::Some(addons) => addons,
-            SomeOrAll::All => self.config.get_addons().values().cloned().collect()
+            SomeOrAll::All => self.rc.get_addons().values().cloned().collect()
         };
 
         let mut success = 0;
@@ -198,11 +198,11 @@ impl<L: Logger> Manager<L> {
         for addon in addons.iter() {
             let name = addon.name();
 
-            if !self.config.get_addons().contains_key(name.as_ref()) {
+            if !self.rc.get_addons().contains_key(name.as_ref()) {
                 continue;
             }
-            self.config.update_addon(addon);
-            let addon = self.config.get_addons().get(&name).unwrap();
+            self.rc.add_or_update_addon(addon);
+            let addon = self.rc.get_addons().get(&name).unwrap();
 
             let path = addon_path.join(name.as_ref());
 
@@ -314,7 +314,7 @@ impl<L: Logger> Manager<L> {
             success += 1;
         }
 
-        if self.config.write().is_err() {
+        if self.rc.write().is_err() {
             self.logger.error("failed to write updates to .luarc.json")
         }
 
@@ -332,7 +332,7 @@ impl<L: Logger> Manager<L> {
                     && addon
                         .path()
                         .file_stem()
-                        .map(|v| !self.config.get_addons().contains_key(&v.to_string_lossy()))
+                        .map(|v| !self.rc.get_addons().contains_key(&v.to_string_lossy()))
                         .unwrap_or_default()
                 {
                     self.logger.update(format!(

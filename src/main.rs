@@ -34,95 +34,98 @@ async fn main() -> Result<(), Error> {
         Subcommand::Remove(addons) => manager.remove(addons)?,
         Subcommand::Update(addons) => manager.update(addons)?,
         Subcommand::Clean => manager.clean()?,
+        Subcommand::List => for (name, addon) in manager.rc.get_addons() {
+            println!("  {name}: {:?}", addon.target);
+        },
         Subcommand::Config { subcommand } => match subcommand {
             Config::Doc { setting } => match setting {
                 DocSetting::Package { patterns } => {
-                    match manager.config.doc.as_mut() {
+                    match manager.rc.doc.as_mut() {
                         Some(d) => d.package_name.extend(patterns),
                         None => {
-                            manager.config.doc = Some(llam::lua_rc::Doc {
+                            manager.rc.doc = Some(llam::lua_rc::Doc {
                                 package_name: patterns.into_iter().collect(),
                                 ..Default::default()
                             })
                         }
                     }
-                    manager.config.write()?;
+                    manager.rc.write()?;
                 }
                 DocSetting::Private { patterns } => {
-                    match manager.config.doc.as_mut() {
+                    match manager.rc.doc.as_mut() {
                         Some(d) => d.private_name.extend(patterns),
                         None => {
-                            manager.config.doc = Some(llam::lua_rc::Doc {
+                            manager.rc.doc = Some(llam::lua_rc::Doc {
                                 private_name: patterns.into_iter().collect(),
                                 ..Default::default()
                             })
                         }
                     }
-                    manager.config.write()?;
+                    manager.rc.write()?;
                 }
                 DocSetting::Protected { patterns } => {
-                    match manager.config.doc.as_mut() {
+                    match manager.rc.doc.as_mut() {
                         Some(d) => d.protected_name.extend(patterns),
                         None => {
-                            manager.config.doc = Some(llam::lua_rc::Doc {
+                            manager.rc.doc = Some(llam::lua_rc::Doc {
                                 protected_name: patterns.into_iter().collect(),
                                 ..Default::default()
                             })
                         }
                     }
-                    manager.config.write()?;
+                    manager.rc.write()?;
                 }
             },
             Config::Diagnostic { setting } => match setting {
                 DiagnosticSetting::Disable { diagnostics } => {
-                    match manager.config.diagnostics.as_mut() {
+                    match manager.rc.diagnostics.as_mut() {
                         Some(d) => d.disable.extend(diagnostics),
                         None => {
-                            manager.config.diagnostics = Some(llam::lua_rc::Diagnostics {
+                            manager.rc.diagnostics = Some(llam::lua_rc::Diagnostics {
                                 disable: diagnostics,
                                 ..Default::default()
                             })
                         }
                     }
-                    manager.config.write()?;
+                    manager.rc.write()?;
                 }
                 DiagnosticSetting::Enable { diagnostics } => {
-                    if let Some(d) = manager.config.diagnostics.as_mut() {
+                    if let Some(d) = manager.rc.diagnostics.as_mut() {
                         d.disable.retain(|item| !diagnostics.contains(item));
-                        manager.config.write()?;
+                        manager.rc.write()?;
                     }
                 }
                 DiagnosticSetting::AddGlobal { globals } => {
-                    match manager.config.diagnostics.as_mut() {
+                    match manager.rc.diagnostics.as_mut() {
                         Some(d) => d.globals.extend(globals),
                         None => {
-                            manager.config.diagnostics = Some(llam::lua_rc::Diagnostics {
+                            manager.rc.diagnostics = Some(llam::lua_rc::Diagnostics {
                                 globals,
                                 ..Default::default()
                             })
                         }
                     }
-                    manager.config.write()?;
+                    manager.rc.write()?;
                 }
                 DiagnosticSetting::RemoveGlobal { globals } => {
-                    if let Some(d) = manager.config.diagnostics.as_mut() {
+                    if let Some(d) = manager.rc.diagnostics.as_mut() {
                         d.globals.retain(|item| !globals.contains(item));
-                        manager.config.write()?;
+                        manager.rc.write()?;
                     }
                 }
                 DiagnosticSetting::Severity { severity } => {
-                    match manager.config.diagnostics.as_mut() {
+                    match manager.rc.diagnostics.as_mut() {
                         Some(d) => d
                             .severity
                             .extend(severity.into_iter().map(|s| (s.key, s.value))),
                         None => {
-                            manager.config.diagnostics = Some(llam::lua_rc::Diagnostics {
+                            manager.rc.diagnostics = Some(llam::lua_rc::Diagnostics {
                                 severity: severity.into_iter().map(|s| (s.key, s.value)).collect(),
                                 ..Default::default()
                             })
                         }
                     }
-                    manager.config.write()?;
+                    manager.rc.write()?;
                 }
             },
         },

@@ -26,6 +26,8 @@ pub enum Subcommand {
     Update(ListOrAll),
     /// Remove any addons that are not in the config/lockfile
     Clean,
+    /// List all the install addons known to the manager
+    List,
     /// Update the .luarc.json config settings
     Config {
         #[command(subcommand)]

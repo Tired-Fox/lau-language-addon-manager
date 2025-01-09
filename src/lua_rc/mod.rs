@@ -23,7 +23,7 @@ use serde_json::Value;
 
 pub mod diagnostics;
 use diagnostics::{Diagnostic, DiagnosticGroup};
-use crate::{Addon, Error, ADDONS_DIR};
+use crate::{Addon, Error, LUARC};
 
 
 const fn enabled(ctx: &bool) -> bool {
@@ -785,13 +785,11 @@ pub struct LuaRc {
 }
 
 impl LuaRc {
-    const LUARC: &'static str = ".luarc.json";
-
     pub fn detect(dir: impl AsRef<Path>) -> Result<Self, Error> {
         let dir = dir.as_ref();
 
-        if dir.join(Self::LUARC).exists() {
-            Self::read(&dir.join(Self::LUARC))
+        if dir.join(LUARC).exists() {
+            Self::read(&dir.join(LUARC))
         } else {
             Self::new(dir)
         }
@@ -819,7 +817,7 @@ impl LuaRc {
         &self.workspace.as_mut().unwrap().addons
     }
 
-    pub fn update_addon(&mut self, addon: &Addon) {
+    pub fn add_or_update_addon(&mut self, addon: &Addon) {
         let name = addon.name();
         if let std::collections::btree_map::Entry::Vacant(e) =
             self.get_addons_mut().entry(name.clone())
@@ -850,53 +848,8 @@ impl LuaRc {
 
     fn new(dir: &Path) -> Result<Self, Error> {
         // Attempt to read sha1 from cloned addon repositories
-        let mut addons = BTreeMap::default();
-
-        let _addons = dir.join(ADDONS_DIR);
-        if _addons.exists() {
-            for entry in (std::fs::read_dir(_addons)?).flatten() {
-                if entry.path().join(".git").exists() && entry.path().join("config.json").exists() {
-                    let output = std::process::Command::new("git")
-                        .args(["rev-parse", "--verify", "HEAD"])
-                        .output()?;
-
-                    if output.status.success() {
-                        let sha = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                        if !sha.is_empty() {
-                            let name = entry
-                                .path()
-                                .file_stem()
-                                .unwrap()
-                                .to_string_lossy()
-                                .to_string();
-                            addons.insert(name.clone().into(), Addon::cats(name, Some(sha), None));
-                            continue;
-                        }
-                    }
-
-                    log::error!(
-                        "checksum couldn't be retrieve for path: {}",
-                        entry.path().display()
-                    );
-                    if !output.stderr.is_empty() {
-                        log::error!("{}", String::from_utf8_lossy(&output.stderr));
-                    }
-                } else if entry.path().is_dir() {
-                    log::warn!("removing invalid addon: {}", entry.path().display());
-                    std::fs::remove_dir_all(entry.path())?;
-                } else if entry.path().is_file() {
-                    log::warn!("removing invalid addon: {}", entry.path().display());
-                    std::fs::remove_file(entry.path())?;
-                }
-            }
-        }
-
         let lock = Self {
-            path: dir.join(Self::LUARC),
-            workspace: Some(Workspace {
-                addons,
-                ..Default::default()
-            }),
+            path: dir.join(LUARC),
             ..Default::default()
         };
 
@@ -905,9 +858,138 @@ impl LuaRc {
             std::fs::create_dir_all(dir)?;
         }
 
-        log::debug!("creating lockfile {}", dir.join(Self::LUARC).display());
-        std::fs::write(dir.join(Self::LUARC), serde_json::to_string_pretty(&lock)?)?;
+        log::debug!("creating luarc at {}", dir.join(LUARC).display());
+        std::fs::write(dir.join(LUARC), serde_json::to_string_pretty(&lock)?)?;
 
         Ok(lock)
+    }
+}
+
+impl LuaRc {
+    /// Return a mutable reference to the inner struct or if it is none,
+    /// create a new default one and return the mutable reference.
+    pub fn completion_mut(&mut self) -> &mut Completion {
+        if self.completion.is_none() {
+            self.completion.replace(Default::default());
+        }
+        self.completion.as_mut().unwrap()
+    }
+
+    /// Return a mutable reference to the inner struct or if it is none,
+    /// create a new default one and return the mutable reference.
+    pub fn addon_manager_mut(&mut self) -> &mut AddonManager {
+        if self.addon_manager.is_none() {
+            self.addon_manager.replace(Default::default());
+        }
+        self.addon_manager.as_mut().unwrap()
+    }
+
+    /// Return a mutable reference to the inner struct or if it is none,
+    /// create a new default one and return the mutable reference.
+    pub fn doc_mut(&mut self) -> &mut Doc {
+        if self.doc.is_none() {
+            self.doc.replace(Default::default());
+        }
+        self.doc.as_mut().unwrap()
+    }
+
+    /// Return a mutable reference to the inner struct or if it is none,
+    /// create a new default one and return the mutable reference.
+    pub fn format_mut(&mut self) -> &mut Format {
+        if self.format.is_none() {
+            self.format.replace(Default::default());
+        }
+        self.format.as_mut().unwrap()
+    }
+
+    /// Return a mutable reference to the inner struct or if it is none,
+    /// create a new default one and return the mutable reference.
+    pub fn hint_mut(&mut self) -> &mut Hint {
+        if self.hint.is_none() {
+            self.hint.replace(Default::default());
+        }
+        self.hint.as_mut().unwrap()
+    }
+    
+    /// Return a mutable reference to the inner struct or if it is none,
+    /// create a new default one and return the mutable reference.
+    pub fn hover_mut(&mut self) -> &mut Hover {
+        if self.hover.is_none() {
+            self.hover.replace(Default::default());
+        }
+        self.hover.as_mut().unwrap()
+    }
+
+    /// Return a mutable reference to the inner struct or if it is none,
+    /// create a new default one and return the mutable reference.
+    pub fn misc_mut(&mut self) -> &mut Misc {
+        if self.misc.is_none() {
+            self.misc.replace(Default::default());
+        }
+        self.misc.as_mut().unwrap()
+    }
+
+    /// Return a mutable reference to the inner struct or if it is none,
+    /// create a new default one and return the mutable reference.
+    pub fn runtime_mut(&mut self) -> &mut Runtime {
+        if self.runtime.is_none() {
+            self.runtime.replace(Default::default());
+        }
+        self.runtime.as_mut().unwrap()
+    }
+
+    /// Return a mutable reference to the inner struct or if it is none,
+    /// create a new default one and return the mutable reference.
+    pub fn semantic_mut(&mut self) -> &mut Semantic {
+        if self.semantic.is_none() {
+            self.semantic.replace(Default::default());
+        }
+        self.semantic.as_mut().unwrap()
+    }
+
+    /// Return a mutable reference to the inner struct or if it is none,
+    /// create a new default one and return the mutable reference.
+    pub fn signature_help_mut(&mut self) -> &mut SignatureHelp {
+        if self.signature_help.is_none() {
+            self.signature_help.replace(Default::default());
+        }
+        self.signature_help.as_mut().unwrap()
+    }
+
+    /// Return a mutable reference to the inner struct or if it is none,
+    /// create a new default one and return the mutable reference.
+    pub fn spell_mut(&mut self) -> &mut Spell {
+        if self.spell.is_none() {
+            self.spell.replace(Default::default());
+        }
+        self.spell.as_mut().unwrap()
+    }
+    
+    /// Return a mutable reference to the inner struct or if it is none,
+    /// create a new default one and return the mutable reference.
+    pub fn type_mut(&mut self) -> &mut Type {
+        if self.r#type.is_none() {
+            self.r#type.replace(Default::default());
+        }
+        self.r#type.as_mut().unwrap()
+    }
+
+    /// Return a mutable reference to the inner struct or if it is none,
+    /// create a new default one and return the mutable reference.
+    pub fn workspace_mut(&mut self) -> &mut Workspace {
+        if self.workspace.is_none() {
+            self.workspace.replace(Default::default());
+        }
+        self.workspace.as_mut().unwrap()
+    }
+
+    /// Return a mutable reference to the inner diagnostics struct or if it is none,
+    /// create a new default one and return the mutable reference.
+    pub fn diagnostics_mut(&mut self) -> &mut Diagnostics {
+        if self.diagnostics.is_none() {
+            self.diagnostics.replace(Default::default());
+        }
+
+        self.diagnostics.as_mut().unwrap()
     }
 }

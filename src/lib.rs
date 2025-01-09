@@ -19,6 +19,8 @@ use serde::{Deserialize, Serialize};
 
 static ADDONS_DIR: &str = ".addons";
 
+pub static LUARC: &str = ".luarc.json";
+
 #[allow(unused)]
 static LUA_LS: &str = "LuaLS";
 #[allow(unused)]
@@ -135,6 +137,17 @@ impl From<&str> for Addon {
             checksum,
             branch: None,
         }
+    }
+}
+
+impl std::fmt::Display for Addon {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.src)?;
+        if let Some(checksum) = self.checksum.as_deref() {
+            write!(f, "@{checksum}")?;
+        }
+
+        Ok(())
     }
 }
 
